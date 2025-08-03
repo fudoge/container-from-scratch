@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"syscall"
 )
 
@@ -45,6 +48,8 @@ func run() {
 func child() {
 	fmt.Printf("Running %v as %d\n", os.Args[2:], os.Getpid())
 
+	cg()
+
 	syscall.Sethostname([]byte("container"))
 	syscall.Chroot("/home/chaewoon/ubuntu-fs")
 	syscall.Chdir("/")
@@ -63,4 +68,22 @@ func child() {
 	}
 
 	syscall.Unmount("/proc", 0)
+}
+
+func cg() {
+	cgroups := "/sys/fs/cgroup"
+	controlGroup := filepath.Join(cgroups, "chaewoon")
+	err := os.Mkdir(controlGroup, 0755)
+	if err != nil && !os.IsExist(err) {
+		panic(err)
+	}
+
+	must(ioutil.WriteFile(filepath.Join(controlGroup, "pids.max"), []byte("20"), 0700))
+	must(ioutil.WriteFile(filepath.Join(controlGroup, "cgroup.procs"), []byte(strconv.Itoa(os.Getpid())), 0700))
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
