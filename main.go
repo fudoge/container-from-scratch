@@ -8,7 +8,7 @@ import (
 )
 
 // dokcer run <image> <cmd> <params>
-// go run main.go <image> <cmd> <params>
+// go run main.go run <image> <cmd> <params>
 
 func main() {
 	switch os.Args[1] {
@@ -31,7 +31,8 @@ func run() {
 	cmd.Stderr = os.Stderr
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID,
+		Cloneflags:   syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS,
+		Unshareflags: syscall.CLONE_NEWNS,
 	}
 
 	err := cmd.Run()
@@ -47,6 +48,7 @@ func child() {
 	syscall.Sethostname([]byte("container"))
 	syscall.Chroot("/home/chaewoon/ubuntu-fs")
 	syscall.Chdir("/")
+	syscall.Mount("proc", "proc", "proc", 0, "")
 
 	cmd := exec.Command(os.Args[2], os.Args[3:]...)
 
@@ -59,4 +61,6 @@ func child() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+
+	syscall.Unmount("/proc", 0)
 }
